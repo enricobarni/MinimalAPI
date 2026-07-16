@@ -1,3 +1,4 @@
+using System.Reflection.Metadata.Ecma335;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -73,6 +74,23 @@ app.MapGet(
         {
             var veiculos = veiculoServico.Todos(pagina);
             return Results.Ok(veiculos);
+        }
+    )
+    .WithTags("Veiculos");
+
+app.MapGet(
+        "/veiculos/{Id}",
+        ([FromRoute] int id, IVeiculoServico veiculoServico) =>
+        {
+            var veiculoPorId = veiculoServico.BuscarPorId(id);
+            if (veiculoPorId != null)
+            {
+                return Results.Ok(veiculoPorId);
+            }
+            else
+            {
+                return Results.NotFound();
+            }
         }
     )
     .WithTags("Veiculos");
