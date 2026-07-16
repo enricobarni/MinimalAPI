@@ -52,10 +52,37 @@ app.MapPost(
 #endregion
 
 #region Veículos
+ErrosDeValidacao validaDTO(VeiculoDTO veiculoDTO)
+{
+    var validacao = new ErrosDeValidacao { Mensagens = new List<string>() };
+
+    if (string.IsNullOrEmpty(veiculoDTO.Nome))
+    {
+        validacao.Mensagens.Add("O nome não pode ser vazio");
+    }
+    if (string.IsNullOrEmpty(veiculoDTO.Marca))
+    {
+        validacao.Mensagens.Add("A marca não pode ser vazia");
+    }
+    // 1885 foi o ano em que inventaram o primero carro a gasolina
+    if (veiculoDTO.Ano < 1885)
+    {
+        validacao.Mensagens.Add("Ano inválido");
+    }
+
+    return validacao;
+}
+
 app.MapPost(
         "/veiculos",
         ([FromBody] VeiculoDTO veiculoDTO, IVeiculoServico veiculoServico) =>
         {
+            var validacao = validaDTO(veiculoDTO);
+            if (validacao.Mensagens.Count > 0)
+            {
+                return Results.BadRequest(validacao);
+            }
+
             var veiculo = new Veiculo
             {
                 Nome = veiculoDTO.Nome,
@@ -102,9 +129,17 @@ app.MapPut(
             var veiculo = veiculoServico.BuscarPorId(id);
             if (veiculo != null)
             {
-                veiculo.Nome = veiculoDTO.Nome;
-                veiculo.Marca = veiculoDTO.Marca;
-                veiculo.Ano = veiculoDTO.Ano;
+                var validacao = validaDTO(veiculoDTO);
+                if (validacao.Mensagens.Count > 0)
+                {
+                    return Results.BadRequest(validacao);
+                }
+                else
+                {
+                    veiculo.Nome = veiculoDTO.Nome;
+                    veiculo.Marca = veiculoDTO.Marca;
+                    veiculo.Ano = veiculoDTO.Ano;
+                }
 
                 veiculoServico.Atualizar(veiculo);
                 return Results.Ok(veiculo);
