@@ -1,8 +1,14 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Reflection.Metadata.Ecma335;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using MinimalAPI.Dominio.DTOs;
 using MinimalAPI.Dominio.Entidades;
 using MinimalAPI.Dominio.Enuns;
@@ -16,11 +22,54 @@ using ProjetoAPI.Dominio.DTOs;
 #region Builder
 var builder = WebApplication.CreateBuilder(args);
 
+var key = builder.Configuration.GetSection("Jwt").ToString();
+
+if (string.IsNullOrEmpty(key))
+    key = "123456";
+
+builder
+    .Services.AddAuthentication(option =>
+    {
+        option.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        option.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(option =>
+    {
+        option.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateLifetime = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 builder.Services.AddScoped<IAdministradorServico, AdministradorServico>();
 builder.Services.AddScoped<IVeiculoServico, VeiculoServico>();
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition(
+        "Bearer",
+        new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "Insira somente o token JWT",
+        }
+    );
+
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = [],
+    });
+});
 
 builder.Services.AddDbContext<DbContexto>(options =>
 {
@@ -31,11 +80,40 @@ var app = builder.Build();
 #endregion
 
 #region Home
-app.MapGet("/", () => Results.Json(new Home())).WithTags("Home");
+app.MapGet("/", () => Results.Json(new Home())).AllowAnonymous().WithTags("Home");
 #endregion
 
 #region PARTE_Administradores
 {
+    #region TokenJwt
+    string GerarTokenJwt(Administrador administrador)
+    {
+        if (!string.IsNullOrEmpty(key))
+        {
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var claims = new List<Claim>()
+            {
+                new Claim("Email", administrador.Email),
+                new Claim("Perfil", administrador.Perfil),
+            };
+
+            var token = new JwtSecurityToken(
+                claims: claims,
+                expires: DateTime.Now.AddHours(2),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+        else
+        {
+            return string.Empty;
+        }
+    }
+    #endregion
+
     #region ValidaçãoAdm
     ErrosDeValidacao validaAdministradorDTO(AdministradorDTO administradorDTO)
     {
@@ -81,6 +159,7 @@ app.MapGet("/", () => Results.Json(new Home())).WithTags("Home");
                 }
             }
         )
+        .RequireAuthorization()
         .WithTags("Administradores");
     #endregion
 
@@ -89,9 +168,18 @@ app.MapGet("/", () => Results.Json(new Home())).WithTags("Home");
             "/administradores/login",
             ([FromBody] LoginDTO loginDTO, IAdministradorServico administradorServico) =>
             {
-                if (administradorServico.Login(loginDTO) != null)
+                var admin = administradorServico.Login(loginDTO);
+                if (admin != null)
                 {
-                    return Results.Ok("Login realizado com sucesso! ");
+                    string token = GerarTokenJwt(admin);
+                    return Results.Ok(
+                        new AdminLogado
+                        {
+                            Email = admin.Email,
+                            Perfil = admin.Perfil,
+                            Token = token,
+                        }
+                    );
                 }
                 else
                 {
@@ -99,6 +187,7 @@ app.MapGet("/", () => Results.Json(new Home())).WithTags("Home");
                 }
             }
         )
+        .AllowAnonymous()
         .WithTags("Administradores");
     #endregion
 
@@ -123,6 +212,7 @@ app.MapGet("/", () => Results.Json(new Home())).WithTags("Home");
                 return Results.Ok(admins);
             }
         )
+        .RequireAuthorization()
         .WithTags("Administradores");
     #endregion
 
@@ -158,12 +248,13 @@ app.MapGet("/", () => Results.Json(new Home())).WithTags("Home");
                 );
             }
         )
+        .RequireAuthorization()
         .WithTags("Administradores");
     #endregion
 }
 #endregion
 
-#region Veículos
+#region PARTE_Veículos
 {
     #region ValidaçãoVeiculos
     ErrosDeValidacao validaVeiculoDTO(VeiculoDTO veiculoDTO)
@@ -210,6 +301,7 @@ app.MapGet("/", () => Results.Json(new Home())).WithTags("Home");
                 return Results.Created($"/veiculos/{veiculo.Id}", veiculo);
             }
         )
+        .RequireAuthorization()
         .WithTags("Veiculos");
     #endregion
 
@@ -223,6 +315,7 @@ app.MapGet("/", () => Results.Json(new Home())).WithTags("Home");
                 return Results.Ok(veiculo);
             }
         )
+        .RequireAuthorization()
         .WithTags("Veiculos");
     #endregion
 
@@ -243,6 +336,7 @@ app.MapGet("/", () => Results.Json(new Home())).WithTags("Home");
                 }
             }
         )
+        .RequireAuthorization()
         .WithTags("Veiculos");
     #endregion
 
@@ -276,6 +370,7 @@ app.MapGet("/", () => Results.Json(new Home())).WithTags("Home");
                 }
             }
         )
+        .RequireAuthorization()
         .WithTags("Veiculos");
     #endregion
 
@@ -297,6 +392,7 @@ app.MapGet("/", () => Results.Json(new Home())).WithTags("Home");
                 }
             }
         )
+        .RequireAuthorization()
         .WithTags("Veiculos");
     #endregion
 }
@@ -305,6 +401,9 @@ app.MapGet("/", () => Results.Json(new Home())).WithTags("Home");
 #region App
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.Run();
 #endregion

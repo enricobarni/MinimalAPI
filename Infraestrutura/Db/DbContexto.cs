@@ -38,7 +38,7 @@ namespace MinimalAPI.Infraestrutura.Db
         {
             if (!optionsBuilder.IsConfigured)
             {
-                var connectionString = _configuration.GetConnectionString("sqlServer")?.ToString();
+                var connectionString = _configuration.GetConnectionString("SqlServer")?.ToString();
                 if (!string.IsNullOrEmpty(connectionString))
                 {
                     optionsBuilder.UseSqlServer(connectionString);
