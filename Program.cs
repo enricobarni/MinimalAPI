@@ -3,6 +3,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -97,6 +98,7 @@ app.MapGet("/", () => Results.Json(new Home())).AllowAnonymous().WithTags("Home"
             {
                 new Claim("Email", administrador.Email),
                 new Claim("Perfil", administrador.Perfil),
+                new Claim(ClaimTypes.Role, administrador.Perfil),
             };
 
             var token = new JwtSecurityToken(
@@ -160,6 +162,7 @@ app.MapGet("/", () => Results.Json(new Home())).AllowAnonymous().WithTags("Home"
             }
         )
         .RequireAuthorization()
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" })
         .WithTags("Administradores");
     #endregion
 
@@ -198,14 +201,14 @@ app.MapGet("/", () => Results.Json(new Home())).AllowAnonymous().WithTags("Home"
             {
                 var admins = new List<AdministradorModelView>();
                 var administradores = administradorServico.Todos(pagina);
-                foreach (var adm in administradores)
+                foreach (var admin in administradores)
                 {
                     admins.Add(
                         new AdministradorModelView
                         {
-                            Email = adm.Email,
-                            Id = adm.Id,
-                            Perfil = adm.Perfil,
+                            Email = admin.Email,
+                            Id = admin.Id,
+                            Perfil = admin.Perfil,
                         }
                     );
                 }
@@ -213,6 +216,7 @@ app.MapGet("/", () => Results.Json(new Home())).AllowAnonymous().WithTags("Home"
             }
         )
         .RequireAuthorization()
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" })
         .WithTags("Administradores");
     #endregion
 
@@ -249,6 +253,7 @@ app.MapGet("/", () => Results.Json(new Home())).AllowAnonymous().WithTags("Home"
             }
         )
         .RequireAuthorization()
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" })
         .WithTags("Administradores");
     #endregion
 }
@@ -302,6 +307,7 @@ app.MapGet("/", () => Results.Json(new Home())).AllowAnonymous().WithTags("Home"
             }
         )
         .RequireAuthorization()
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin, Editor" })
         .WithTags("Veiculos");
     #endregion
 
@@ -337,6 +343,7 @@ app.MapGet("/", () => Results.Json(new Home())).AllowAnonymous().WithTags("Home"
             }
         )
         .RequireAuthorization()
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin, Editor" })
         .WithTags("Veiculos");
     #endregion
 
@@ -371,6 +378,7 @@ app.MapGet("/", () => Results.Json(new Home())).AllowAnonymous().WithTags("Home"
             }
         )
         .RequireAuthorization()
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" })
         .WithTags("Veiculos");
     #endregion
 
@@ -393,6 +401,7 @@ app.MapGet("/", () => Results.Json(new Home())).AllowAnonymous().WithTags("Home"
             }
         )
         .RequireAuthorization()
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" })
         .WithTags("Veiculos");
     #endregion
 }
