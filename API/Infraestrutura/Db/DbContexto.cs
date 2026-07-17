@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MinimalAPI.Dominio.Entidades;
+
+[assembly: InternalsVisibleTo("Test")]
 
 namespace MinimalAPI.Infraestrutura.Db
 {
@@ -15,6 +18,9 @@ namespace MinimalAPI.Infraestrutura.Db
         {
             _configuration = configuration;
         }
+
+        internal DbContexto(DbContextOptions<DbContexto> options)
+            : base(options) { }
 
         public DbSet<Administrador> Administradores { get; set; } = default!;
         public DbSet<Veiculo> Veiculos { get; set; } = default!;
