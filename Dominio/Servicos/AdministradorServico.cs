@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using MinimalAPI.Dominio.DTOs;
 using MinimalAPI.Dominio.Entidades;
 using MinimalAPI.Infraestrutura.Db;
 using MinimalAPI.Infraestrutura.Interfaces;
@@ -19,6 +20,19 @@ namespace MinimalAPI.Dominio.Servicos
             _context = context;
         }
 
+        public Administrador Adicionar(Administrador administrador)
+        {
+            _context.Administradores.Add(administrador);
+            _context.SaveChanges();
+
+            return administrador;
+        }
+
+        public Administrador? BuscarPorId(int id)
+        {
+            return _context.Administradores.Where(v => v.Id == id).FirstOrDefault();
+        }
+
         public Administrador? Login(LoginDTO loginDTO)
         {
             var adm = _context
@@ -28,6 +42,20 @@ namespace MinimalAPI.Dominio.Servicos
                 .FirstOrDefault();
 
             return adm;
+        }
+
+        public List<Administrador> Todos(int? pagina)
+        {
+            var query = _context.Administradores.AsQueryable();
+
+            int itensPerPage = 10;
+
+            if (pagina != null)
+            {
+                query = query.Skip(((int)pagina - 1) * itensPerPage).Take(itensPerPage);
+            }
+
+            return query.ToList();
         }
     }
 }
